@@ -207,7 +207,7 @@ LuCI --->
 
 * 烧录固件
 
-3. uci文件创建
+3. uci文件创建（？）
 
 * 方式1 在openwrt源码目录 `openwrt源码/package/base-files/files/etc/config/` 新建`cbi_file`文件
 
