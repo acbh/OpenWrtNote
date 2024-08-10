@@ -1,3 +1,18 @@
+**vscode remote 连接 openwrt失败**
+
+？
+
+**查看文件夹总大小**
+
+`du -sh openwrt/`
+
+**git修改最近一次commit信息**
+
+```shell
+git commit --amend
+git push --force
+```
+
 **linux 安装 deb 文件**
 
 `sudo dpkg -i filename.deb`

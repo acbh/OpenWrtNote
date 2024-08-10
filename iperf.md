@@ -14,7 +14,7 @@
 
    * 如果路由器连接了网络可以直接在路由器安装`iperf`：
 
-   ```sh
+   ```cmd
    opkg update
    opkg install iperf3
    ```
@@ -125,4 +125,31 @@ rm -rf /tmp/luci-*
 有可能会遇到`openwrt`无法使用rm命令, 换成执行`rm -rf /tmp/luci-*`
 
 最后在`LuCI`的状态菜单下看到新添加的`Iperf Test`页面，点击按钮后会运行`iperf`测试并显示结果。
+
+**使用lua编写cbi一直报错**
+
+```cmd
+
+Runtime error
+Unhandled exception during request dispatching
+/usr/lib/lua/luci/ucodebridge.lua:23: /usr/lib/lua/luci/cbi.lua:1364: attempt to concatenate local 'section' (a nil value)
+
+In error(), file [C]
+  called from function [anonymous function] (/usr/lib/lua/luci/ucodebridge.lua:23)
+  called from function  ((tail call))
+
+In [anonymous function](), file /usr/share/ucode/luci/runtime.uc, line 148, byte 45:
+  called from function [arrow function] (/usr/share/ucode/luci/dispatcher.uc:794:4)
+  called from function render ([C])
+  called from function render_action (/usr/share/ucode/luci/dispatcher.uc:768:24)
+  called from function run_action (/usr/share/ucode/luci/dispatcher.uc:795:4)
+  called from function [anonymous function] (/usr/share/ucode/luci/dispatcher.uc:1003:48)
+  called from anonymous function (/www/cgi-bin/luci:39:13)
+
+ `        return lcall.call(modname, method, ...args);`
+  Near here ----------------------------------------^
+
+```
+
+
 
