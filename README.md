@@ -1,1 +1,2 @@
-# OpenWrtNote
+# OpenWrtLearnNote
+

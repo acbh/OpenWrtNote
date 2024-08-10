@@ -14,6 +14,10 @@
 
 `subl`
 
+**openwrt无法使用rm命令**
+
+`rm -rf /tmp/luci-*`
+
 **clash配置**
 
 ```bash
@@ -132,6 +136,9 @@ bind 'c' new-window -c "#{pane_current_path}"
 
 # run-shell "powerline-daemon -q"
 
+# set tmux vim highlight
+set -g default-terminal "xterm-256color"
+
 # vim: ft=conf
 ```
 
@@ -144,4 +151,6 @@ bind 'c' new-window -c "#{pane_current_path}"
 **查看所有被挂起的tmux**
 
 `tmux list-sessions`
+
+**将vim中的tab改为4**
 

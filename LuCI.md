@@ -203,7 +203,7 @@ LuCI --->
 		<*> luci-app-myapplication
 ```
 
-* 选定，保存退出，编译`make V=s`
+* 保存退出，编译`make V=s`
 
 * 烧录固件
 
