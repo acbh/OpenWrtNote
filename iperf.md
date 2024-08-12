@@ -1,10 +1,12 @@
-**`iperf`简易测试**
+#### `iperf`简易测试
 
 在服务端（路由器）输入`iperf3 -s`, 然后在客户端输入`iperf3 -c 192.168.1.1`
 
 ![image-20240808130558086](/home/bhhh/snap/typora/90/.config/Typora/typora-user-images/image-20240808130558086.png)
 
 **在`openwrt luci`界面增加一个测速工具`iperf`并展现**
+
+#### 方法一：lua
 
 0. **`ssh`连接到`openwrt`**
 
@@ -129,7 +131,6 @@ rm -rf /tmp/luci-*
 **使用lua编写cbi一直报错**
 
 ```cmd
-
 Runtime error
 Unhandled exception during request dispatching
 /usr/lib/lua/luci/ucodebridge.lua:23: /usr/lib/lua/luci/cbi.lua:1364: attempt to concatenate local 'section' (a nil value)
@@ -151,5 +152,109 @@ In [anonymous function](), file /usr/share/ucode/luci/runtime.uc, line 148, byte
 
 ```
 
+#### 方法二：使用JS实现
+
+结合HTML和JavaScript来实现`iperf`测速工具，避免一些使用Lua编写CBI可能遇到的问题。
+
+**创建控制器**
+
+创建一个LuCI控制器来加载页面：
+
+```lua
+-- root@OpenWrt:/usr/lib/lua/luci/controller#
+module("luci.controller.iperf", package.seeall)
+
+function index()
+    entry({"admin", "network", "iperf"}, template("iperf/iperf"), _("iPerf Speed Test"), 30).dependent = false
+    entry({"admin", "network", "iperf", "run"}, call("action_run")).leaf = true
+    entry({"admin", "network", "iperf", "read_result"}, call("action_read_result")).leaf = true
+end
+
+function action_run()
+    local server = luci.http.formvalue("server")
+    -- 将结果写入一个临时文件
+    luci.sys.exec("iperf3 -c " .. server .. " -t 10 > /tmp/iperf_result.txt 2>&1 &")
+    luci.http.prepare_content("text/plain")
+    luci.http.write("started")
+end
+
+function action_read_result()
+    -- 读取临时文件内容并返回
+    local result = luci.sys.exec("cat /tmp/iperf_result.txt")
+    luci.http.prepare_content("text/plain")
+    luci.http.write(result)
+end
+```
+
+`luci.sys.exec` 是同步的，只有在命令执行完毕后才会返回结果，所以为了实现实时刷新，可以将 `iperf3` 命令的输出逐步写入临时文件，并且通过定时器读取该文件的内容。
+
+**创建HTML模板** 
+
+创建一个HTML模板，用于显示界面和启动测速任务：
+
+`root@OpenWrt:/usr/lib/lua/luci/view/iperf#`
+
+```html
+<%+header%>
+
+<h2><%= translate("iPerf Speed Test") %></h2>
+
+<form id="iperf-form">
+    <label for="server"><%= translate("Server IP") %>:</label>
+    <input type="text" id="server" name="server" placeholder="192.168.1.1">
+    <button type="button" onclick="startTest()"><%= translate("Start Test") %></button>
+</form>
+
+<h3><%= translate("Test Results") %></h3>
+<div id="result" style="white-space: pre-wrap;"></div>
+
+<script type="text/javascript">
+    var intervalId;
+
+    function startTest() {
+        var server = document.getElementById("server").value;
+        var resultDiv = document.getElementById("result");
+        resultDiv.innerHTML = "<%= translate("Running test...") %>";
+
+        // 发送开始测试请求
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", "<%= luci.dispatcher.build_url('admin/network/iperf/run') %>?server=" + encodeURIComponent(server), true);
+        xhr.send(null);
+
+        // 清除任何现有的定时器
+        clearInterval(intervalId);
+
+        function updateResult() {
+            var xhrResult = new XMLHttpRequest();
+            xhrResult.open("GET", "<%= luci.dispatcher.build_url('admin/network/iperf/read_result') %>", true);
+            xhrResult.onreadystatechange = function() {
+                if (xhrResult.readyState == 4 && xhrResult.status == 200) {
+                    resultDiv.innerHTML = xhrResult.responseText;
+                }
+            };
+            xhrResult.send(null);
+        }
+
+        // 设置定时器，每秒钟刷新一次结果
+        intervalId = setInterval(updateResult, 1000);
+    }
+</script>
+
+<%+footer%>
+```
+
+**部署并测试**
+
+1. 将文件保存到相应目录：
+   - 控制器文件：`/usr/lib/lua/luci/controller/iperf.lua`
+   - HTML模板：`/usr/lib/lua/luci/view/iperf/iperf.htm`
+   
+2. 重启`LuCI`服务：
+   ```bash
+   /etc/init.d/uhttpd restart
+   ```
 
 
+**结果展示**
+
+![image-20240812162437099](/home/bhhh/snap/typora/90/.config/Typora/typora-user-images/image-20240812162437099.png)

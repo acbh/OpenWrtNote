@@ -1,6 +1,8 @@
-**vscode remote 连接 openwrt失败**
+**vscode remote 连接 openwrt失败, 清除`~/.ssh/known_hosts`旧的密钥信息后仍然报错**
 
-？
+**VS Code 的 Remote-SSH 插件连接到远程服务器时遇到了问题。具体问题可能是由于远程服务器上未安装 `bash`，或者 `bash` 不能正确运行。**
+
+`待解决`
 
 **查看文件夹总大小**
 
