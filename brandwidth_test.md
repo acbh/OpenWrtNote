@@ -46,11 +46,23 @@ bmon: Bandwidth Monitor, 监控网络带宽和性能工具，方便查看查看�
 
 安装：`sudo apt-get install bmon`, 使用：`bmon`
 
-#### 
+#### UDP广播
+
+UDP通信流程
+
+```mermaid
+flowchart TB
+server_socket --> bind --> recvfrom1 --> sendto1 --> close1
+sendto1 --> |"response"| recvfrom2
+client_socket --> sendto2 --> recvfrom2 --> close2
+sendto2 --> |"request"| recvfrom1
+```
+
+UDP广播发现服务器
 
 
 
-### 1. **实现一对多带宽测试程序**
+### 1. **一对多带宽测试程序**
 
    - **服务器端**:
      1. 创建一个TCP或UDP服务器，监听某个端口。
@@ -76,14 +88,16 @@ mode: double 					limit: no limit
 
 pre		next 	set limit exit
 Connected device: 0	 	Run time: 0 	Page:0
--------------------------------------------------------
+-----------------------------------------------------
 UP		0.00 Mbps 		DOWN 			0.00 Mbps
 
 Max bw: 	0.00 	| 	Max bw 		: 	0.00
 Min bw: 	0.00 	| 	Min bw 		: 	0.00
 Average bw:	0.00    |   Average bw  : 	0.00
 
-| RANK | IP 		|PORT | UP 		| DOWN 			|
+| RANK | IP 		    |PORT | UP 		| DOWN  	|
+|[ 1 ] | 192.168.166.20 |57676|9.93Mbps |9.93Mpbs   |
+.....
 ```
 
 #### 连接列表 支持翻页
