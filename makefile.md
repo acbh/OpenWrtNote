@@ -35,5 +35,3 @@ gcc main.cpp header.cpp -o program
 #### Makefile
 
 
-
-![image-20240814170833768](/home/bhhh/snap/typora/90/.config/Typora/typora-user-images/image-20240814170833768.png)
