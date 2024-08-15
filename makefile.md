@@ -34,4 +34,9 @@ gcc main.cpp header.cpp -o program
 
 #### Makefile
 
+解决vscode编辑器编写makefile总是缺失分隔符的问题，原因是vscode默认使用空格来缩进，点击右下角, `空格：4`更改成制符表缩进即可。![img](https://cdn.nlark.com/yuque/0/2024/png/40475032/1723685136398-46184391-ee90-4dfb-9910-387b957fedc9.png)
+
+
+
+
 

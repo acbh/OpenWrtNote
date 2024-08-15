@@ -58,7 +58,7 @@ client_socket --> sendto2 --> recvfrom2 --> close2
 sendto2 --> |"request"| recvfrom1
 ```
 
-UDP广播发现服务器
+使用UDP广播发现服务器
 
 
 

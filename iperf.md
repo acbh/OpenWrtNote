@@ -1,4 +1,4 @@
-#### `iperf`简易测试
+#### `iperf`
 
 在服务端（路由器）输入`iperf3 -s`, 然后在客户端输入`iperf3 -c 192.168.1.1`
 
@@ -51,6 +51,7 @@
      function index()
          entry({"admin", "network", "iperf"}, template("iperf/iperf"), _("iPerf Speed Test"), 30).dependent = false
          entry({"admin", "network", "iperf", "run"}, call("action_run")).leaf = true
+         entry({"admin", "network", "iperf", "status"}, call("action_status")).leaf = true
      end
      
      function action_run()
@@ -58,28 +59,39 @@
          
          luci.http.prepare_content("text/plain")
      
-         local cmd = "iperf3 -c " .. server .. " --forceflush -t 10"
+         local cmd = "iperf3 -c " .. server .. " --forceflush -t 10 &"
+         os.execute(cmd)
+         luci.http.write("Test started")
+     end
+     
+     function action_status()
+         local cmd = "tail -n 20 /tmp/iperf3_output.txt" -- 假设输出被重定向到 /tmp/iperf3_output.txt
+         luci.http.prepare_content("text/plain")
          local pipe = io.popen(cmd, "r")
          if pipe then
-             for line in pipe:lines() do
-                 luci.http.write(line .. "\n")
-                 io.flush()
-             end
+             local result = pipe:read("*a")
+             luci.http.write(result)
              pipe:close()
          else
-             luci.http.write("Failed to start iperf3")
+             luci.http.write("Failed to get test status")
          end
      end
      ```
 
-     `io.popen()`允许在命令执行期间逐行读取输出，而`luci.sys.exec()`会等待命令执行完毕，期间阻塞任何其他操作
+     使用`luci.http.formvalue("server")`获取到前端fetch请求传递的地址
 
-     
+     `io.popen()`打开一个管道，实时数据流通道，它允许在命令执行期间逐行读取输出，而`luci.sys.exec()`会等待命令执行完毕，期间阻塞任何其他操作
+
+     `pipe:lines()`迭代器读取管道中新的输出，并且是实时的逐行读取，当`iperf3`产生新输出时，会被立刻读取到。
+
+     在
 
    - **创建HTM模板**
 
      创建HTM以显示`iperf`结果`/usr/lib/lua/luci/view/iperf`
 
+     使用`fetch API`发送请求，次将输出存到`resultDiv`中
+     
      ```html
      <%+header%>
      
@@ -99,31 +111,23 @@
              var server = document.getElementById("server").value;
              var resultDiv = document.getElementById("result");
              resultDiv.innerHTML = "<%= translate("Running test...") %>";
+             var resultText = '';
      
-             // Fetch request with streaming response handling
+             // 启动测试
              fetch("<%= luci.dispatcher.build_url('admin/network/iperf/run') %>?server=" + encodeURIComponent(server))
-                 .then(response => {
-                     const reader = response.body.getReader();
-                     const decoder = new TextDecoder();
-                     let resultText = '';
-     
-                     function readStream() {
-                         reader.read().then(({ done, value }) => {
-                             if (done) {
-                                 resultDiv.innerHTML = resultText + "<br><%= translate("Test complete.") %>";
-                                 return;
-                             }
-                             resultText += decoder.decode(value, { stream: true });
-                             resultDiv.innerHTML = resultText;
-                             resultDiv.scrollTop = resultDiv.scrollHeight;
-                             readStream();
-                         });
-                     }
-     
-                     readStream();
-                 })
-                 .catch(error => {
-                     resultDiv.innerHTML = "<%= translate("Error during test: ") %>" + error;
+                 .then(() => {
+                     // 定时获取结果
+                     var intervalId = setInterval(() => {
+                         fetch("<%= luci.dispatcher.build_url('admin/network/iperf/status') %>")
+                             .then(response => response.text())
+                             .then(text => {
+                                 resultText = text;
+                                 resultDiv.innerHTML = resultText;
+                                 if (text.includes("iperf Done.")) {
+                                     clearInterval(intervalId); // 测试完成后停止获取
+                                 }
+                             });
+                     }, 1000); // 每秒获取一次结果
                  });
          }
      </script>
@@ -137,11 +141,9 @@
    /etc/init.d/uhttpd restart
    ```
 
-> 如果界面没刷新可以清除浏览器缓存或者清除`luci`缓存
->
-> `rm -rf /tmp/luci-*`
->
-> 有可能会遇到`openwrt`无法使用rm命令, 换成执行`rm -rf /tmp/luci-*`
+​	如果界面没刷新可以清除浏览器缓存或者清除`luci`缓存：`rm -rf /tmp/luci-*`
+
+​	有可能会遇到`openwrt`无法使用rm命令, 换成执行：`/bin/rm -rf /tmp/luci-*`
 
 **结果**
 
