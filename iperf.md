@@ -37,60 +37,54 @@
      end
      ```
 
-     这里发现无法逐行输出到控制台，可能的原因是输出缓冲，需要在命令后边加上`--forceflush`
-
-   
+     测试发现这里无法逐行输出到控制台，可能的原因是输出带有缓冲，`iperf3`在执行过程中逐行产生，但是输出会先存储在缓冲区，等程序结束时才会被一次性写入文件中，需要给命令加上`--forceflush`强制 `iperf3` 在每次生成输出后立即刷新缓冲区，将数据写到文件
+     
+     `iperf3 --forceflush -i 1 -t 10 -c 192.168.1.1 > /usr/lib/lua/luci/controller/tmp.txt 2>&1`
+     
+     `io.popen()`打开一个管道，实时数据流通道，它允许在命令执行期间逐行读取输出，而`os.execute()`会等待命令执行完毕，期间阻塞任何其他操作
+     
+     `pipe:lines()`迭代器读取管道中新的输出，并且是实时的逐行读取，当`iperf3`产生新输出时，会被立刻读取到
 
    - **创建`Lua`脚本**
 
-     在`/usr/lib/lua/luci/controller`目录下创建一个新的`Lua`脚本文件`iperf.lua`，用来定义新的`LuCI`页面：
+     在`/usr/lib/lua/luci/controller`目录下创建一个新的`Lua`脚本文件`iperf.lua`，用来定义新的`LuCI`页面
+
+     使用`luci.http.formvalue("server")`获取到前端fetch请求传递的地址
+
+     在`http`数据流写入`test complete`通知前端测试已完成
 
      ```lua
      module("luci.controller.iperf", package.seeall)
      
      function index()
-         entry({"admin", "network", "iperf"}, template("iperf/iperf"), _("iPerf Speed Test"), 30).dependent = false
-         entry({"admin", "network", "iperf", "run"}, call("action_run")).leaf = true
-         entry({"admin", "network", "iperf", "status"}, call("action_status")).leaf = true
+         entry({"admin", "network", "iperf"}, template("admin/network/iperf"), _("iPerf_Test"),1)
+         entry({"admin", "network", "run"}, call("action_run")).leaf = true
+         entry({"admin", "network", "iperf_log"}, template("admin/network/iperf_log"), "log", 2).leaf = true
      end
      
      function action_run()
-         local server = luci.http.formvalue("server")
-         
-         luci.http.prepare_content("text/plain")
-     
-         local cmd = "iperf3 -c " .. server .. " --forceflush -t 10 &"
-         os.execute(cmd)
-         luci.http.write("Test started")
-     end
-     
-     function action_status()
-         local cmd = "tail -n 20 /tmp/iperf3_output.txt" -- 假设输出被重定向到 /tmp/iperf3_output.txt
-         luci.http.prepare_content("text/plain")
+         local server = luci.http.formvalue("server") or ""
+         local cmd = "iperf3 --forceflush -i 1 -t 10 -c " .. server .. " > /usr/lib/lua/luci/view/admin/network/iperf_log.htm 2>&1"
          local pipe = io.popen(cmd, "r")
-         if pipe then
-             local result = pipe:read("*a")
-             luci.http.write(result)
-             pipe:close()
-         else
-             luci.http.write("Failed to get test status")
-         end
+         pipe:close()
+         luci.http.write("test complete")
      end
      ```
 
-     使用`luci.http.formvalue("server")`获取到前端fetch请求传递的地址
+   - **创建`HTM`模板**
 
-     `io.popen()`打开一个管道，实时数据流通道，它允许在命令执行期间逐行读取输出，而`luci.sys.exec()`会等待命令执行完毕，期间阻塞任何其他操作
+     创建`/usr/lib/lua/luci/view/admin/network/iperf_log`用于输出重定向, 这个文件可以什么都不写
 
-     `pipe:lines()`迭代器读取管道中新的输出，并且是实时的逐行读取，当`iperf3`产生新输出时，会被立刻读取到。
-
-     在
-
-   - **创建HTM模板**
-
-     创建HTM以显示`iperf`结果`/usr/lib/lua/luci/view/iperf`
-
-     使用`fetch API`发送请求，次将输出存到`resultDiv`中
+     ```html
+     <%+header%>
+     <%+footer%>
+     ```
+     
+     创建`HTM`以显示`iperf`结果`/usr/lib/lua/luci/view/admin/network/iperf`
+     
+     从前端获取到`ip`以后，通过`fetch`发送请求启动脚本测试，再使用定时器获取实时输出
+     
+     每次将输出存到`resultDiv`中
      
      ```html
      <%+header%>
@@ -100,40 +94,42 @@
      <form id="iperf-form">
          <label for="server"><%= translate("Server IP") %>:</label>
          <input type="text" id="server" name="server" placeholder="192.168.1.1">
-         <button type="button" onclick="startTest()"><%= translate("Start Test") %></button>
+         <button type="button" onclick="startTest()" style="color: green; padding: 5px 5px"><%= translate("Start Test") %></button>
      </form>
      
      <h3><%= translate("Test Results") %></h3>
-     <div id="result" style="white-space: pre-wrap; border: 2px solid #ccc; padding: 10px; height: 450px; overflow-y: scroll;"></div>
+     <pre id="result" style="white-space: pre-wrap; border: 2px solid #ccc; padding: 10px; height: 450px; overflow-y: scroll;"></pre>
      
      <script type="text/javascript">
          function startTest() {
              var server = document.getElementById("server").value;
              var resultDiv = document.getElementById("result");
-             resultDiv.innerHTML = "<%= translate("Running test...") %>";
-             var resultText = '';
+             resultDiv.textContent = "<%= translate("Running test...") %>";
      
              // 启动测试
-             fetch("<%= luci.dispatcher.build_url('admin/network/iperf/run') %>?server=" + encodeURIComponent(server))
-                 .then(() => {
-                     // 定时获取结果
-                     var intervalId = setInterval(() => {
-                         fetch("<%= luci.dispatcher.build_url('admin/network/iperf/status') %>")
-                             .then(response => response.text())
-                             .then(text => {
-                                 resultText = text;
-                                 resultDiv.innerHTML = resultText;
-                                 if (text.includes("iperf Done.")) {
-                                     clearInterval(intervalId); // 测试完成后停止获取
-                                 }
-                             });
-                     }, 1000); // 每秒获取一次结果
-                 });
+             fetch("/cgi-bin/luci/admin/network/run?server=" + server)
+                 .then(response => response.text())
+             	.then(data => {
+     		});
+             
+             // 定时获取结果
+             var intervalId = setInterval(function() {
+                 fetch("/cgi-bin/luci/admin/network/iperf_log")
+                     .then(response => response.text())
+                     .then(text => {
+                      if (text.includes("test complete")) {
+                          	text = text.replace("test complete", "")
+                             clearInterval(intervalId);
+                         }
+                         resultDiv.textContent = text;
+                     });
+             }, 500); // 每500ms获取一次结果
+             
          }
      </script>
-     
      <%+footer%>
      ```
+     
 
 4. **重新加载`LuCI`**
 
@@ -145,7 +141,8 @@
 
 ​	有可能会遇到`openwrt`无法使用rm命令, 换成执行：`/bin/rm -rf /tmp/luci-*`
 
-**结果**
+**显示结果**
 
-![image-20240813130449736](/home/bhhh/snap/typora/90/.config/Typora/typora-user-images/image-20240813130449736.png)
+![image-20240816142220990](/home/bhhh/snap/typora/90/.config/Typora/typora-user-images/image-20240816142220990.png)
 
+![image-20240816142237609](/home/bhhh/snap/typora/90/.config/Typora/typora-user-images/image-20240816142237609.png)
