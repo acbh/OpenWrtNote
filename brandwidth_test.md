@@ -103,7 +103,7 @@ int main()
 gcc -o test test.c -lncurses
 ```
 
-
+更多`ncursesAPI`文档[manpages](https://manpages.debian.org/bullseye/ncurses-doc/)
 
 ### 1. **设计思路**
    - **服务器（Server）**：负责监听客户端的连接请求，并发送或接收数据以测试带宽。服务器会同时处理多个客户端的请求。
