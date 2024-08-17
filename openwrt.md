@@ -1,9 +1,25 @@
 #### OpenWrt SDK下载编译
 下载 `git clone https://github.com/openwrt/openwrt.git`
 
+源码目录结构：
+
+```
+/config ：menuconfig 的配置文件
+/include : makefile 配置文件
+/package ：打包 makefile 和配置
+/scripts ：整个构建过程中使用的各种脚本
+/target ：用于构建 imagebuilder、内核、sdk 和 buildroot 构建的工具链的 makefile 和配置。
+/toolchain ：用于构建工具链的 makefile 和配置
+/tools ：整个构建过程中使用的各种工具
+```
+
 更新 `./scripts/feeds update -a`
 
 安装 `./scripts/feeds install -a`
+
+>feeds: 第三方的包
+>
+>package: 官方的包
 
 检查编译环境是否完整 `make defconfig`
 
@@ -37,6 +53,29 @@ LuCI --->
 > CPU 全速编译，就加上 -j 参数<例如 :-j4>，第一次编译最好不带-j 参数
 
 编译完成后，在 `bin/targets/ipq40xx/generic/`看到生成的固件
+
+相关菜单选项的含义：
+
+```sh
+Target System：CPU机型
+Subtarget：CPU架构对应的型号
+Target Profile：机型配置
+Target Image：目前镜像类型
+Global build settings：支持组件宏定义设置
+。。。。。global到base一般不会动：系统启动相关项
+Base system：系统核心组件
+Administration:管理工具
+Boot loaders：
+Development：编译开发工具
+extra package：
+Firmware：无线网卡驱动
+fonts：字体
+kernel modules：内核模块
+languages：编程语言
+libraries：常用库
+network：网络相关软件
+utilities：小工具
+```
 
 #### openwrt固件升级
 
@@ -80,3 +119,23 @@ openwrt 默认编译生成的固件 ip 均为 `192.168.1.1`
 5. **配置管理层**：用于保存和管理系统的各种配置信息。 
 
    例如，当需要在家中搭建一个智能路由器时，OpenWrt 的网络层可以提供强大的 QoS（服务质量）功能，确保在进行在线游戏或视频通话时获得稳定的网络体验。而软件包管理层则允许轻松安装诸如广告拦截、远程访问等实用的功能模块。
+
+#### openwrt文件系统目录结构
+
+```
+bin：binery 程序
+etc：配置文件
+mnt：存储挂载目录
+proc：kernel创建，系统相关文件（兼容问题无法取缔）
+sys：kernel创建，系统相关文件
+usr：用户目录
+www：网络资源文件
+dev：kernel创建，系统硬件设备相关
+lib：库文件
+overlay：覆盖层
+rom：静态文件
+sbin：程序
+tmp：临时文件
+var：临时文件
+```
+
