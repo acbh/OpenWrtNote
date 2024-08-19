@@ -4,6 +4,12 @@
 
 ![image-20240808130558086](/home/bhhh/snap/typora/90/.config/Typora/typora-user-images/image-20240808130558086.png)
 
+`iperf3 -c 127.0.0.1 -P12 -R`
+
+作为客户端连接到`127.0.0.1`，创建12个并行流进行带宽测试，服务器发送数据到客户端（下行），`iperf`默认执行上行测试
+
+
+
 **在`openwrt luci`界面增加一个测速工具`iperf`并展现**
 
 0. **`ssh`连接到`openwrt`**

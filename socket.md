@@ -11,7 +11,7 @@ socket创建在内核中，创建成功返回核文件描述表中的socket描�
 
 int socket(int domain, int type, int protocol)
 
-// 返回：成功返回描述符，出错返回-1
+// 返回：成功 返回描述符，出错 返回-1
 ```
 
 **参数**
