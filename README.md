@@ -1,2 +1,2 @@
-# OpenWrtLearnNote
+# bhhh's develop study note
 

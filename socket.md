@@ -30,3 +30,6 @@ int socket(int domain, int type, int protocol)
   * SOCK_DGRAM  	 UDP
   * SOCK_RAW                IP\ICMP
   * SOCK_SEQPACKET   长度固定、有序、可靠的面向链接报文传递
+
+#### epoll多线程网络并发通信
+
