@@ -41,6 +41,8 @@ git push --force
 
 **clash配置**
 
+跑路云
+
 ```bash
 https://app.nloli.xyz/sub?target=clash&udp=true&config=https%3A%2F%2Fraw.githubusercontent.com%2FHynoR%2FACL4SSR%2Fmaster%2FClash%2Fconfig%2FACL4SSR_Online.ini&exclude=GAME&emoji=true&filename=Paoluz_Cat4SSR&new_name=true&url=https://rss.paoluz.xyz/link/FmmDlKwZW79aR6Aq?sub=1
 ```
@@ -66,6 +68,16 @@ Host key verification failed.
 sudo ssh-keygen -f "/root/.ssh/known_hosts" -R "192.168.1.1"
 sudo ssh root@192.168.1.1
 ```
+
+**在tmux中复制文本**
+
+选中文本后不松手按`y`
+
+前提是安装`yank.tmux`
+
+**查看所有被挂起的tmux**
+
+`tmux list-sessions`
 
 **tmux配置文件报错**
 
@@ -163,15 +175,5 @@ set -g default-terminal "xterm-256color"
 # vim: ft=conf
 ```
 
-**在tmux中复制文本**
 
-选中文本后不松手按`y`
-
-前提是安装`yank.tmux`
-
-**查看所有被挂起的tmux**
-
-`tmux list-sessions`
-
-**将vim中的tab改为4**
 
