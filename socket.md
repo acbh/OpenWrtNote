@@ -10,11 +10,32 @@ socket创建在内核中，创建成功返回核文件描述表中的socket描�
 #include <sys/socket.h>
 
 int socket(int domain, int type, int protocol)
+// 创建一个套接字
+// 返回：成功 返回描述符可以操作内核的某一块内存，网络通信基于这个文件描述符来完成。出错 返回-1
+    
+// 将文件描述符和本地的IP与端口进行绑定   
+int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 
-// 返回：成功 返回描述符，出错 返回-1
+// 给监听的套接字设置监听
+int listen(int sockfd, int backlog);
+
+// 等待并接受客户端的连接请求, 建立新的连接, 会得到一个新的文件描述符(通信的)		
+int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
+
+// 接收数据
+ssize_t read(int sockfd, void *buf, size_t size);
+ssize_t recv(int sockfd, void *buf, size_t size, int flags);
+
+// 发送数据的函数
+ssize_t write(int fd, const void *buf, size_t len);
+ssize_t send(int fd, const void *buf, size_t len, int flags);
+
+// 成功连接服务器之后, 客户端会自动随机绑定一个端口
+// 服务器端调用accept()的函数, 第二个参数存储的就是客户端的IP和端口信息
+int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 ```
 
-**参数**
+**int socket参数**
 
 * domain
   - AF_INET     IPv4
@@ -30,6 +51,85 @@ int socket(int domain, int type, int protocol)
   * SOCK_DGRAM  	 UDP
   * SOCK_RAW                IP\ICMP
   * SOCK_SEQPACKET   长度固定、有序、可靠的面向链接报文传递
+
+**文件描述符对应的内存结构：**
+
+一个文件文件描述符对应两块内存, 一块内存是读缓冲区, 一块内存是写缓冲区
+读数据: 通过文件描述符将内存中的数据读出, 这块内存称之为读缓冲区
+写数据: 通过文件描述符将数据写入到某块内存中, 这块内存称之为写缓冲区
+
+**函数**
+
+```c
+// 这套api主要用于 网络通信过程中 IP 和 端口 的 转换
+// 将一个短整形从主机字节序 -> 网络字节序
+uint16_t htons(uint16_t hostshort);	
+// 将一个整形从主机字节序 -> 网络字节序
+uint32_t htonl(uint32_t hostlong);	
+// 将一个短整形从网络字节序 -> 主机字节序
+uint16_t ntohs(uint16_t netshort)
+// 将一个整形从网络字节序 -> 主机字节序
+uint32_t ntohl(uint32_t netlong);
+```
+
+**sockaddr数据结构**
+
+```c
+// 在写数据的时候不好用
+struct sockaddr {
+	sa_family_t sa_family;       // 地址族协议, ipv4
+	char        sa_data[14];     // 端口(2字节) + IP地址(4字节) + 填充(8字节)
+}
+
+typedef unsigned short  uint16_t;
+typedef unsigned int    uint32_t;
+typedef uint16_t in_port_t;
+typedef uint32_t in_addr_t;
+typedef unsigned short int sa_family_t;
+#define __SOCKADDR_COMMON_SIZE (sizeof (unsigned short int))
+
+struct in_addr
+{
+    in_addr_t s_addr;
+};  
+
+// sizeof(struct sockaddr) == sizeof(struct sockaddr_in)
+struct sockaddr_in
+{
+    sa_family_t sin_family;		/* 地址族协议: AF_INET */
+    in_port_t sin_port;         /* 端口, 2字节-> 大端  */
+    struct in_addr sin_addr;    /* IP地址, 4字节 -> 大端  */
+    /* 填充 8字节 */
+    unsigned char sin_zero[sizeof (struct sockaddr) - sizeof(sin_family) -
+               sizeof (in_port_t) - sizeof (struct in_addr)];
+}; 
+```
+
+#### TCP通信流程
+
+面向连接、安全的流式传输协议
+
+面向连接：是一个双向连接，通过三次握手完成，断开连接需要通过四次挥手完成。
+安全：tcp通信过程中，会对发送的每一数据包都会进行校验, 如果发现数据丢失, 会自动重传
+流式传输：发送端和接收端处理数据的速度，数据的量都可以不一致
+
+**服务器端通信流程**
+
+socket() -> bind() -> listen() -> accept() -> read()/write() -> close()
+
+**在tcp的服务器端, 有两类文件描述符**
+
+* 监听的文件描述符
+  只需要有一个
+  不负责和客户端通信, 负责检测客户端的连接请求, 检测到之后调用accept就可以建立新的连接
+
+* 通信的文件描述符
+  负责和建立连接的客户端通信
+  如果有N个客户端和服务器建立了新的连接, 通信的文件描述符就有N个，每个客户端和服务器都对应一个通信的文件描述符
+
+**客户端通信流程**
+
+socket() -> connect() -> read()/recv() -> close()
 
 #### epoll网络并发通信
 
