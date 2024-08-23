@@ -208,7 +208,7 @@ int main()
 
 ```c
 #include <pthread.h>
-// 参数就子线程的线程ID, 主线程就可以和这个子线程分离了
+// 参数是子线程的线程ID, 主线程就可以和这个子线程分离了
 int pthread_detach(pthread_t thread);
 ```
 
