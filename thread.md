@@ -271,3 +271,6 @@ int pthread_cancel(pthread_t thread);
 int pthread_equal(pthread_t t1, pthread_t t2);
 ```
 
+### IO多路复用
+
+使用IO多路复用函数委托内核检测服务器端所有的文件描述符，如果检测到已就绪的文件描述符就阻塞解除，将这些已就绪的文件描述符传出

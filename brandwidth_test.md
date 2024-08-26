@@ -47,24 +47,6 @@ $$
 
 安装：`sudo apt-get install bmon`, 使用：`bmon`
 
-#### UDP广播
-
-UDP通信流程
-
-```mermaid
-flowchart TB
-server_socket --> bind --> recvfrom1 --> sendto1 --> close1
-sendto1 --> |"response"| recvfrom2
-client_socket --> sendto2 --> recvfrom2 --> close2
-sendto2 --> |"request"| recvfrom1
-```
-
-使用UDP广播发现服务器
-
-服务器端负责接收来自客户端的UDP数据包，计算并汇总带宽使用情况
-
-客户端通过UDP广播来向指定网络段所有设备发送数据包，模拟实际网络流量
-
 ### 1. **设计思路**
 - **服务器（Server）**：负责监听客户端的连接请求，并发送或接收数据以测试带宽。服务器会同时处理多个客户端的请求。
 - **客户端（Client）**：每个客户端连接到服务器并执行带宽测试，上传或下载数据。
