@@ -48,15 +48,29 @@ $$
 安装：`sudo apt-get install bmon`, 使用：`bmon`
 
 ### 1. **设计思路**
+
+**了解多线程的方式，用`epoll`去写异步服务器端，客户端的话支持动态数据调整，要在服务器显示列表，发送指令进行上行下行，进行限速。扎实网络编程。传输的数据包大小最好是`MTU`的值，按字节统计**
+
 - **服务器（Server）**：负责监听客户端的连接请求，并发送或接收数据以测试带宽。服务器会同时处理多个客户端的请求。
+  - 初始化客户端信息 
+  - 创建监听套接字
+  - 绑定套接字 监听端口
+  - 创建`epoll`实例
+  - 添加监听套接字到`epoll`
+  - 初始化`ncurses`界面
+  - 等待事件，每秒更新显示
+  - 创建线程处理客户端
+  - 更新显示
+
 - **客户端（Client）**：每个客户端连接到服务器并执行带宽测试，上传或下载数据。
-- **ncurses 界面**：用于显示服务器和客户端的实时状态、带宽统计、测试进度等信息。
+  - 创建套接字
+  - 设置`socket`为非阻塞模式
+  - 计算带宽 显示信息
 
-了解多线程的方式，用epoll去写异步服务器端，客户端的话支持动态数据调整，要在服务器显示列表，发送指令进行上行下行，进行限速
 
-扎实网络编程。传输的数据包大小最好是MTU的值，按字节统计。
 
-### 2. **使用 ncurses 实现实时显示**
+
+### 2. **使用 `ncurses `实现实时显示**
    - **界面布局**：
      
      - 顶部显示服务器状态（如连接的客户端数量、当前测试类型等）。
@@ -69,8 +83,8 @@ $$
 
 - **多线程处理**：
      - 由于服务器需要同时处理多个客户端的连接，可以使用多线程或多进程来管理每个客户端的带宽测试。
-     - 主线程负责处理 ncurses 界面的更新和整体逻辑，而每个客户端的连接可以由独立的线程处理带宽测试。
-     - 使用线程间通信机制（如共享变量、消息队列）将带宽测试的实时数据传递给主线程，以便在 ncurses 界面上显示。
+     - 主线程负责处理 `ncurses` 界面的更新和整体逻辑，而每个客户端的连接可以由独立的线程处理带宽测试。
+     - 使用线程间通信机制（如共享变量、消息队列）将带宽测试的实时数据传递给主线程，以便在 `ncurses` 界面上显示。
 
 - **界面概要设计**：
 
@@ -114,299 +128,342 @@ $$
      - 这些值会被频繁刷新，显示最新的网络状态。
    - **累积统计**：
      - 在每个连接结束后计算累计带宽、平均带宽等指标。
-     - 在测试结束时，汇总所有客户端的测试结果并在 ncurses 界面上显示。
+     - 在测试结束时，汇总所有客户端的测试结果并在 `ncurses` 界面上显示。
 
-### 5. 代码架构
+### 5. 代码
 
-伪代码
-
-```c
-#include <ncurses.h>
-#include <pthread.h>
-
-void* handle_client(void* arg);
-void update_ui();
-
-int main() {
-    // 初始化 ncurses
-    initscr();
-    cbreak();
-    noecho();
-    timeout(100); // 设置非阻塞输入
-
-    // 主循环
-    while (1) {
-        // 更新界面
-        update_ui();
-
-        // 处理用户输入
-        int ch = getch();
-        if (ch == 'q') break; // 按 'q' 退出程序
-
-        // 其他逻辑
-    }
-
-    // 关闭 ncurses
-    endwin();
-    return 0;
-}
-
-void update_ui() {
-    // 清屏并更新客户端带宽信息
-    clear();
-    mvprintw(0, 0, "Server Running...");
-
-    // 刷新界面
-    refresh();
-}
-
-void* handle_client(void* arg) {
-    // 客户端处理逻辑
-    return NULL;
-}
-```
-
-服务器
+`server.c`
 
 ```c
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <pthread.h>
-#include <ncurses.h>
 #include <arpa/inet.h>
+#include <sys/epoll.h>
+#include <errno.h>
+#include <time.h>
+#include <ncurses.h> // 引入 ncurses 库
 
-#define PORT 12345
-#define BUF_SIZE 1024
-#define MAX_CLIENTS 10
+#define PORT 8888		 // 服务器端口
+#define MAX_EVENTS 10	 // 最大事件数
+#define BUFFER_SIZE 1400 // 缓冲区大小
+#define MAX_CLIENTS 1024 // 最大客户端数
 
-typedef struct
+typedef struct // 客户端信息
 {
 	int socket;
-	struct sockaddr_in address;
-	int id;
-	double bandwidth;
-	pthread_t thread; // 存储线程标识符
-} Client;
+	double up_bw;
+	double down_bw;
+	time_t start_time;
+	int num_packets;
+} client_info;
 
-Client clients[MAX_CLIENTS];
-int client_count = 0;
-pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
+client_info clients[MAX_CLIENTS];
 
-void *handle_client(void *arg);
-void update_ui();
+void process_client_data(int client_fd) // 处理来自客户端的数据
+{
+	char buffer[BUFFER_SIZE];
+	int bytes_read;
+
+	while ((bytes_read = recv(client_fd, buffer, sizeof(buffer), 0)) > 0)
+	{
+		// 计算带宽
+		for (int i = 0; i < MAX_CLIENTS; i++)
+		{
+			mvprintw(0,0,"test test test test \n");
+			if (clients[i].socket == client_fd)
+			{
+				clients[i].num_packets++;
+				time_t elapsed_time = time(NULL) - clients[i].start_time;
+
+				if (elapsed_time > 0)
+				{
+					clients[i].up_bw = (clients[i].num_packets * sizeof(buffer) * 8.0) / (1024 * 1024 * elapsed_time); // 计算上行带宽，单位Mbps
+					snprintf(buffer, sizeof(buffer), "Client %d: UP: %.2f Mbps", client_fd, clients[i].up_bw);
+					send(client_fd, buffer, strlen(buffer), 0);
+				}
+				break;
+			}
+		}
+	}
+
+	if (bytes_read == 0)
+	{
+		// 客户端断开连接
+		printf("Client %d disconnected\n", client_fd);
+	}
+	else if (bytes_read < 0)
+	{
+		perror("recv");
+	}
+}
+
+void update_display()
+{
+	clear(); // 清屏
+
+	mvprintw(0, 0, "Server listening on port %d", PORT);
+	mvprintw(1, 0, "Connected clients: ");
+
+	int row = 2; // 从第三行开始打印客户端信息
+
+	for (int i = 0; i < MAX_CLIENTS; i++)
+	{
+		if (clients[i].socket != 0)
+		{
+			mvprintw(row++, 0, "Client %d: UP: %.2f Mbps", clients[i].socket, clients[i].up_bw);
+		}
+	}
+
+	refresh(); // 刷新屏幕
+}
 
 int main()
 {
-	int server_socket;
-	struct sockaddr_in server_addr;
+	int server_fd, epoll_fd;
+	struct sockaddr_in address;
+	struct epoll_event ev, events[MAX_EVENTS];
+	int addrlen = sizeof(address);
+
+	// 初始化客户端信息
+	memset(clients, 0, sizeof(clients));
+
+	// 创建监听套接字
+	if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
+	{
+		perror("socket failed");
+		exit(EXIT_FAILURE);
+	}
+
+	int opt = 1;
+	setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)); // 重用地址
+	// setsockopt(server_fd, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt)); // 重用端口
+
+	address.sin_family = AF_INET;
+	address.sin_addr.s_addr = INADDR_ANY;
+	address.sin_port = htons(PORT);
+
+	// 绑定套接字
+	if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0)
+	{
+		perror("bind failed");
+		exit(EXIT_FAILURE);
+	}
+
+	// 监听端口
+	if (listen(server_fd, MAX_CLIENTS) < 0)
+	{
+		perror("listen");
+		exit(EXIT_FAILURE);
+	}
+
+	// 创建 epoll 实例
+	epoll_fd = epoll_create1(0);
+	if (epoll_fd == -1)
+	{
+		perror("epoll_create1");
+		exit(EXIT_FAILURE);
+	}
+
+	// 添加监听套接字到 epoll
+	ev.events = EPOLLIN;
+	ev.data.fd = server_fd;
+	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, server_fd, &ev) == -1)
+	{
+		perror("epoll_ctl: server_fd");
+		exit(EXIT_FAILURE);
+	}
 
 	// 初始化 ncurses
 	initscr();
 	cbreak();
 	noecho();
-	timeout(100);
+	curs_set(FALSE);
 
-	// 创建服务器套接字
-	server_socket = socket(AF_INET, SOCK_STREAM, 0);
-	if (server_socket < 0)
-	{
-		perror("Socket creation failed");
-		exit(EXIT_FAILURE);
-	}
+	printf("Server is listening on port %d\n", PORT);
 
-	// 设置服务器地址
-	server_addr.sin_family = AF_INET;
-	server_addr.sin_addr.s_addr = INADDR_ANY;
-	server_addr.sin_port = htons(PORT);
-
-	// 绑定套接字
-	if (bind(server_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
-	{
-		perror("Bind failed");
-		close(server_socket);
-		exit(EXIT_FAILURE);
-	}
-
-	// 监听连接
-	if (listen(server_socket, MAX_CLIENTS) < 0)
-	{
-		perror("Listen failed");
-		close(server_socket);
-		exit(EXIT_FAILURE);
-	}
-
-	// 主循环，等待客户端连接
 	while (1)
 	{
-		struct sockaddr_in client_addr;
-		socklen_t client_len = sizeof(client_addr);
-		int client_socket = accept(server_socket, (struct sockaddr *)&client_addr, &client_len);
-
-		if (client_socket < 0)
+		int nfds = epoll_wait(epoll_fd, events, MAX_EVENTS, 1000); // 等待事件，并每秒更新显示
+		if (nfds == -1)
 		{
-			perror("Accept failed");
-			continue;
+			perror("epoll_wait");
+			break;
 		}
 
-		// 创建客户端处理线程
-		pthread_mutex_lock(&clients_mutex);
-		if (client_count < MAX_CLIENTS)
+		for (int n = 0; n < nfds; n++)
 		{
-			clients[client_count].socket = client_socket;
-			clients[client_count].address = client_addr;
-			clients[client_count].id = client_count;
-			clients[client_count].bandwidth = 0.0;
-			pthread_create(&clients[client_count].thread, NULL, handle_client, &clients[client_count]);
-			client_count++;
-		}
-		else
-		{
-			close(client_socket);
-		}
-		pthread_mutex_unlock(&clients_mutex);
+			if (events[n].data.fd == server_fd)
+			{
+				// 接受新连接
+				int new_socket;
+				if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen)) < 0)
+				{
+					perror("accept");
+					continue;
+				}
 
-		// 更新界面
-		update_ui();
+				// 添加新连接到 epoll 实例
+				ev.events = EPOLLIN | EPOLLET; // 使用边缘触发（ET）模式
+				ev.data.fd = new_socket;
+				if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, new_socket, &ev) == -1)
+				{
+					perror("epoll_ctl: new_socket");
+					close(new_socket);
+					continue;
+				}
+
+				// 初始化新客户端的信息
+				for (int i = 0; i < MAX_CLIENTS; i++)
+				{
+					if (clients[i].socket == 0)
+					{
+						clients[i].socket = new_socket;
+						clients[i].start_time = time(NULL);
+						clients[i].num_packets = 0;
+						break;
+					}
+				}
+			}
+			else
+			{
+				// 处理来自客户端的数据
+				int client_fd = events[n].data.fd;
+				process_client_data(client_fd);
+
+				// 从 epoll 实例中移除并关闭连接
+				epoll_ctl(epoll_fd, EPOLL_CTL_DEL, client_fd, NULL);
+				close(client_fd);
+
+				// 清除客户端信息
+				for (int i = 0; i < MAX_CLIENTS; i++)
+				{
+					if (clients[i].socket == client_fd)
+					{
+						clients[i].socket = 0;
+						break;
+					}
+				}
+			}
+		}
+
+		update_display(); // 更新显示
 	}
 
 	// 关闭 ncurses
 	endwin();
-	close(server_socket);
+
+	close(server_fd);
+	close(epoll_fd);
 	return 0;
-}
-
-void *handle_client(void *arg)
-{
-	Client *client = (Client *)arg;
-	char buffer[BUF_SIZE];
-	ssize_t bytes_received;
-	double total_bytes = 0;
-	time_t start_time, end_time;
-
-	// 获取开始时间
-	time(&start_time);
-
-	// 处理数据传输
-	while ((bytes_received = recv(client->socket, buffer, BUF_SIZE, 0)) > 0)
-	{
-		total_bytes += bytes_received;
-		time(&end_time);
-		double duration = difftime(end_time, start_time);
-
-		// 计算带宽 (MB/s)
-		pthread_mutex_lock(&clients_mutex);
-		client->bandwidth = (total_bytes / 1024.0 / 1024.0) / duration;
-		pthread_mutex_unlock(&clients_mutex);
-
-		// 更新界面
-		update_ui();
-	}
-
-	// 关闭客户端连接
-	close(client->socket);
-
-	// 从客户端列表中删除
-	pthread_mutex_lock(&clients_mutex);
-	client_count--;
-	pthread_mutex_unlock(&clients_mutex);
-
-	pthread_exit(NULL);
-}
-
-void update_ui()
-{
-	clear();
-	mvprintw(0, 0, "Server Running...");
-	mvprintw(1, 0, "Connected clients: %d", client_count);
-
-	// 显示每个客户端的带宽
-	pthread_mutex_lock(&clients_mutex);
-	for (int i = 0; i < client_count; i++)
-	{
-		mvprintw(3 + i, 0, "Client %d - Bandwidth: %.2f MB/s", clients[i].id, clients[i].bandwidth);
-	}
-	pthread_mutex_unlock(&clients_mutex);
-
-	refresh();
 }
 ```
 
-客户端
+`client.c`
 
 ```c
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <ncurses.h>
 #include <unistd.h>
+#include <stdio.h>
+#include <string.h>
 #include <arpa/inet.h>
+#include <time.h>
+#include <fcntl.h>
 
-#define SERVER_IP "127.0.0.1"
-#define PORT 12345
-#define BUF_SIZE 1024
+void display_bandwidth_stats(double up, double down)
+{
+    mvprintw(10, 0, "UP: %.2f Mbps \t\tDOWN: %.2f Mbps", up, down);
+    refresh();
+}
 
 int main()
 {
-	int sock;
-	struct sockaddr_in server_addr;
-	char buffer[BUF_SIZE];
+    int sock = 0;
+    struct sockaddr_in serv_addr;
+    char buffer[1400];                   // 假设数据包大小为1400字节
+    memset(buffer, 'A', sizeof(buffer)); // 用数据填充包
 
-	// 创建套接字
-	sock = socket(AF_INET, SOCK_STREAM, 0);
-	if (sock < 0)
-	{
-		perror("Socket creation failed");
-		exit(EXIT_FAILURE);
-	}
+    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    {
+        printf("\n Socket creation error \n");
+        return -1;
+    }
 
-	// 设置服务器地址
-	server_addr.sin_family = AF_INET;
-	server_addr.sin_port = htons(PORT);
-	if (inet_pton(AF_INET, SERVER_IP, &server_addr.sin_addr) <= 0)
-	{
-		perror("Invalid address");
-		close(sock);
-		exit(EXIT_FAILURE);
-	}
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(8888);
 
-	// 连接服务器
-	if (connect(sock, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
-	{
-		perror("Connection failed");
-		close(sock);
-		exit(EXIT_FAILURE);
-	}
+    if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0)
+    {
+        printf("\nInvalid address/ Address not supported \n");
+        return -1;
+    }
 
-	// 发送数据
-	while (1)
-	{
-		memset(buffer, 'A', BUF_SIZE);
-		if (send(sock, buffer, BUF_SIZE, 0) < 0)
-		{
-			perror("Send failed");
-			break;
-		}
-		usleep(10000); // 模拟带宽限制，调整此值控制速度
-	}
+    if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+    {
+        printf("\nConnection Failed \n");
+        return -1;
+    }
 
-	// 关闭连接
-	close(sock);
-	return 0;
+    // 设置 socket 为非阻塞模式
+    fcntl(sock, F_SETFL, O_NONBLOCK);
+
+    // 初始化 ncurses
+    initscr();
+    cbreak();
+    noecho();
+    curs_set(FALSE);
+
+    double up_bw = 0.0, down_bw = 0.0;
+    int num_packets = 0;
+    time_t start_time = time(NULL);
+
+    while (1)
+    {
+        int ch = getch();
+        if (ch == 'q')
+        {
+            break;
+        }
+
+        send(sock, buffer, sizeof(buffer), 0);
+        num_packets++;
+        time_t elapsed_time = time(NULL) - start_time;
+
+        if (elapsed_time > 0)
+        {
+            up_bw = (num_packets * sizeof(buffer) * 8.0) / (1024 * 1024 * elapsed_time); // 计算上行带宽，单位Mbps
+            display_bandwidth_stats(up_bw, down_bw);                                     // 显示带宽统计信息
+        }
+
+        // 尝试接收服务器反馈数据（非阻塞）
+        int n = recv(sock, buffer, sizeof(buffer) - 1, 0);
+        if (n > 0)
+        {
+            buffer[n] = '\0'; // 确保字符串以空字符结束
+            mvprintw(15, 0, "%s", buffer);
+            refresh();
+        }
+
+        usleep(100000); // 100ms 延迟
+    }
+
+    endwin();
+    close(sock);
+
+    return 0;
 }
 ```
 
-编译
+编译 运行
 
 ```bash
 gcc -o server server.c -lpthread -lncurses
 gcc -o client client.c
-```
 
-运行
-
-```bash
 ./server
 ./client (打开多个)
 ```
+
+
 
