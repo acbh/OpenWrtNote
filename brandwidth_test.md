@@ -141,28 +141,37 @@ iperf Done.
 
 - **界面概要设计**：
 
+  ![image-20240829165441321](/home/bhhh/snap/typora/90/.config/Typora/typora-user-images/image-20240829165441321.png)
+  
   ```
-  Server addr: 	192.168.166.100		port: 8888
-  broadcast addr: 192.168.166.255		port: 5005
-  test time:		500 sec			pakg size:	1400 bit
-  mode: double 					limit: no limit
-  
-  pre		next 	set limit exit
-  Connected device: 0	 	Run time: 0 	Page:0
-  -----------------------------------------------------
-  UP		0.00 Mbps 		DOWN 			0.00 Mbps
-  
-  Max bw: 	0.00 	| 	Max bw 		: 	0.00
-  Min bw: 	0.00 	| 	Min bw 		: 	0.00
-  Average bw:	0.00    |   Average bw  : 	0.00
-  
-  | RANK | IP 		    |PORT | UP 		| DOWN  	|
-  |[ 1 ] | 192.168.166.20 |57676|9.93Mbps |9.93Mpbs   |
-  .....
+  ┌──────────────────────────────────────────────────────────────────────────────┐
+  │Server    addr:        192.168.18.125          port: 8888                     │
+  │Broadcast addr:        192.168.18.255          port: 5005                     │
+  │Test      time:        500 sec                 Pakg size: 1470 bit            │
+  │Mode:    double                                Limit: no limit                │
+  │                                                                              │
+  │pre        next        set-limit               exit(press 'q')                │
+  │                                                                              │
+  │| RANK | IP            |  PORT  | UP            | DOWN          |             │
+  │-----------------------------------------------------------------             │
+  │|  [1] | 127.0.0.1     |  38482 | 10534.19 Mbps | 66666.66 Mbps |             │
+  │|  [2] | 127.0.0.1     |  38490 | 12870.97 Mbps | 66666.66 Mbps |             │
+  │|  [3] | 127.0.0.1     |  38494 | 10309.08 Mbps | 66666.66 Mbps |             │
+  │|  [4] | 127.0.0.1     |  38502 | 11805.87 Mbps | 66666.66 Mbps |             │
+  │|  [5] | 127.0.0.1     |  38504 | 15201.28 Mbps | 66666.66 Mbps |             │
+  │|  [6] | 127.0.0.1     |  38510 | 13239.42 Mbps | 66666.66 Mbps |             │
+  │|  [7] | 127.0.0.1     |  38526 | 13831.60 Mbps | 66666.66 Mbps |             │
+  │|  [8] | 127.0.0.1     |  38534 | 15832.47 Mbps | 66666.66 Mbps |             │
+  │|  [9] | 127.0.0.1     |  38536 | 10046.14 Mbps | 66666.66 Mbps |             │
+  │                                                                              │
+  │                                                                              │
+  │                                                                              │
+  │                                                                              │
+  └──────────────────────────────────────────────────────────────────────────────┘
   ```
-
+  
   连接列表 支持翻页
-
+  
   共12个客户端，限速后实际速度与bmon监控的速度一致
 
 
