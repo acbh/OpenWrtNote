@@ -47,6 +47,58 @@ $$
 
 安装：`sudo apt-get install bmon`, 使用：`bmon`
 
+#### iperf3 测速
+
+UDP
+
+```shell
+bhhh@bhcomputer:~$ iperf3 -u -c 127.0.0.1 -b 100G
+Connecting to host 127.0.0.1, port 5201
+[  5] local 127.0.0.1 port 51401 connected to 127.0.0.1 port 5201
+[ ID] Interval           Transfer     Bitrate         Total Datagrams
+[  5]   0.00-1.00   sec  9.36 GBytes  80.4 Gbits/sec  306857
+[  5]   1.00-2.00   sec  9.60 GBytes  82.5 Gbits/sec  314722
+[  5]   2.00-3.00   sec  9.66 GBytes  82.9 Gbits/sec  316378
+[  5]   3.00-4.00   sec  9.63 GBytes  82.8 Gbits/sec  315705
+[  5]   4.00-5.00   sec  9.64 GBytes  82.8 Gbits/sec  315950
+[  5]   5.00-6.00   sec  9.67 GBytes  83.0 Gbits/sec  316725
+[  5]   6.00-7.00   sec  9.73 GBytes  83.6 Gbits/sec  318986
+[  5]   7.00-8.00   sec  9.71 GBytes  83.4 Gbits/sec  318095
+[  5]   8.00-9.00   sec  9.78 GBytes  84.0 Gbits/sec  320464
+[  5]   9.00-10.00  sec  9.80 GBytes  84.2 Gbits/sec  321128
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
+[  5]   0.00-10.00  sec  96.6 GBytes  83.0 Gbits/sec  0.000 ms  0/3165010 (0%)  sender
+[  5]   0.00-10.04  sec  96.6 GBytes  82.6 Gbits/sec  0.001 ms  142/3165010 (0.0045%)  receiver
+
+iperf Done.
+```
+
+TCP
+
+```shell
+bhhh@bhcomputer:~$ iperf3 -c 127.0.0.1 -b 100G
+Connecting to host 127.0.0.1, port 5201
+[  5] local 127.0.0.1 port 56664 connected to 127.0.0.1 port 5201
+[ ID] Interval           Transfer     Bitrate         Retr  Cwnd
+[  5]   0.00-1.00   sec  10.4 GBytes  89.3 Gbits/sec    0   1.62 MBytes    
+[  5]   1.00-2.00   sec  10.5 GBytes  89.8 Gbits/sec    0   1.62 MBytes    
+[  5]   2.00-3.00   sec  10.8 GBytes  92.5 Gbits/sec    0   1.62 MBytes    
+[  5]   3.00-4.00   sec  10.4 GBytes  89.2 Gbits/sec    0   1.62 MBytes    
+[  5]   4.00-5.00   sec  10.3 GBytes  88.2 Gbits/sec    0   1.62 MBytes    
+[  5]   5.00-6.00   sec  9.98 GBytes  85.7 Gbits/sec    0   1.62 MBytes    
+[  5]   6.00-7.00   sec  10.3 GBytes  88.1 Gbits/sec    0   1.62 MBytes    
+[  5]   7.00-8.00   sec  10.1 GBytes  86.5 Gbits/sec    0   1.62 MBytes    
+[  5]   8.00-9.00   sec  10.7 GBytes  91.7 Gbits/sec    0   1.62 MBytes    
+[  5]   9.00-10.00  sec  10.4 GBytes  89.7 Gbits/sec    0   1.62 MBytes    
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bitrate         Retr
+[  5]   0.00-10.00  sec   104 GBytes  89.1 Gbits/sec    0             sender
+[  5]   0.00-10.04  sec   104 GBytes  88.7 Gbits/sec                  receiver
+
+iperf Done.
+```
+
 ### 1. **设计思路**
 
 **了解多线程的方式，用`epoll`去写异步服务器端，客户端的话支持动态数据调整，要在服务器显示列表，发送指令进行上行下行，进行限速。扎实网络编程。传输的数据包大小最好是`MTU`的值，按字节统计**
