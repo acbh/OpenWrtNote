@@ -77,24 +77,24 @@ iperf Done.
 TCP
 
 ```shell
-bhhh@bhcomputer:~$ iperf3 -c 127.0.0.1 -b 100G
+bhhh@bhcomputer:~$ iperf3 -c 127.0.0.1
 Connecting to host 127.0.0.1, port 5201
-[  5] local 127.0.0.1 port 56664 connected to 127.0.0.1 port 5201
+[  5] local 127.0.0.1 port 35176 connected to 127.0.0.1 port 5201
 [ ID] Interval           Transfer     Bitrate         Retr  Cwnd
-[  5]   0.00-1.00   sec  10.4 GBytes  89.3 Gbits/sec    0   1.62 MBytes    
-[  5]   1.00-2.00   sec  10.5 GBytes  89.8 Gbits/sec    0   1.62 MBytes    
-[  5]   2.00-3.00   sec  10.8 GBytes  92.5 Gbits/sec    0   1.62 MBytes    
-[  5]   3.00-4.00   sec  10.4 GBytes  89.2 Gbits/sec    0   1.62 MBytes    
-[  5]   4.00-5.00   sec  10.3 GBytes  88.2 Gbits/sec    0   1.62 MBytes    
-[  5]   5.00-6.00   sec  9.98 GBytes  85.7 Gbits/sec    0   1.62 MBytes    
-[  5]   6.00-7.00   sec  10.3 GBytes  88.1 Gbits/sec    0   1.62 MBytes    
-[  5]   7.00-8.00   sec  10.1 GBytes  86.5 Gbits/sec    0   1.62 MBytes    
-[  5]   8.00-9.00   sec  10.7 GBytes  91.7 Gbits/sec    0   1.62 MBytes    
-[  5]   9.00-10.00  sec  10.4 GBytes  89.7 Gbits/sec    0   1.62 MBytes    
+[  5]   0.00-1.00   sec  11.2 GBytes  95.9 Gbits/sec    0   1.62 MBytes
+[  5]   1.00-2.00   sec  11.4 GBytes  98.0 Gbits/sec    0   1.62 MBytes
+[  5]   2.00-3.00   sec  11.5 GBytes  98.5 Gbits/sec    0   1.62 MBytes
+[  5]   3.00-4.00   sec  11.4 GBytes  97.9 Gbits/sec    0   1.62 MBytes
+[  5]   4.00-5.00   sec  11.3 GBytes  97.2 Gbits/sec    0   1.62 MBytes
+[  5]   5.00-6.00   sec  10.5 GBytes  90.2 Gbits/sec    0   1.62 MBytes
+[  5]   6.00-7.00   sec  10.4 GBytes  88.9 Gbits/sec    0   1.62 MBytes
+[  5]   7.00-8.00   sec  10.8 GBytes  93.1 Gbits/sec    0   1.62 MBytes
+[  5]   8.00-9.00   sec  10.3 GBytes  88.9 Gbits/sec    0   1.62 MBytes
+[  5]   9.00-10.00  sec  10.3 GBytes  88.6 Gbits/sec    0   1.62 MBytes
 - - - - - - - - - - - - - - - - - - - - - - - - -
 [ ID] Interval           Transfer     Bitrate         Retr
-[  5]   0.00-10.00  sec   104 GBytes  89.1 Gbits/sec    0             sender
-[  5]   0.00-10.04  sec   104 GBytes  88.7 Gbits/sec                  receiver
+[  5]   0.00-10.00  sec   109 GBytes  93.7 Gbits/sec    0             sender
+[  5]   0.00-10.04  sec   109 GBytes  93.3 Gbits/sec                  receiver
 
 iperf Done.
 ```
