@@ -1,2 +1,2 @@
-# bhhh's develop study note
+# my develop study notes
 
