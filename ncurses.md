@@ -200,3 +200,110 @@ int main(int argc, char* argv[])
      └─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
+添加鼠标支持
+
+```c
+#include <ncurses.h>
+#include <stdlib.h>
+
+typedef enum
+{
+	MODE_UP,
+	MODE_DOWN,
+	MODE_DOUBLE
+} Mode;
+
+void draw_mode(WINDOW *win, Mode mode)
+{
+	werase(win);	// 清除窗口内容
+	box(win, 0, 0); // 绘制边框
+	mvwprintw(win, 1, 1, "Current Mode: ");
+	switch (mode)
+	{
+	case MODE_UP:
+		wprintw(win, "UP");
+		break;
+	case MODE_DOWN:
+		wprintw(win, "DOWN");
+		break;
+	case MODE_DOUBLE:
+		wprintw(win, "DOUBLE");
+		break;
+	}
+	wrefresh(win); // 刷新窗口内容
+}
+
+Mode handle_click(Mode mode)
+{
+	// 循环切换模式
+	switch (mode)
+	{
+	case MODE_UP:
+		return MODE_DOWN;
+	case MODE_DOWN:
+		return MODE_DOUBLE;
+	case MODE_DOUBLE:
+		return MODE_UP;
+	}
+	return mode;
+}
+
+int main()
+{
+	initscr();
+	cbreak();
+	noecho();
+	keypad(stdscr, TRUE);
+	mousemask(BUTTON1_CLICKED, NULL);
+
+	// 检查终端是否支持鼠标
+	if (!has_mouse())
+	{
+		endwin();
+		printf("Mouse is not supported by this terminal.\n");
+		exit(1);
+	}
+
+	int yMax, xMax;
+	getmaxyx(stdscr, yMax, xMax);
+
+	// 调整窗口大小并居中显示
+	WINDOW *win = newwin(10, 50, (yMax / 2) - 3, (xMax / 2) - 20);
+	box(win, 0, 0);
+
+	Mode current_mode = MODE_UP;
+	draw_mode(win, current_mode);
+
+	while (1)
+	{
+		int ch = getch();
+		if (ch == 'q')
+			break;
+
+		if (ch == KEY_MOUSE)
+		{
+			MEVENT event;
+			if (getmouse(&event) == OK)
+			{
+				// 输出鼠标点击位置
+				mvprintw(yMax - 2, 0, "Mouse clicked at (%d, %d)", event.x, event.y);
+				refresh(); // 刷新主窗口以显示点击位置
+
+				// 检查点击是否在窗口内
+				if (event.x >= (xMax / 2) - 20 && event.x <= (xMax / 2) + 20 &&
+					event.y >= (yMax / 2) - 3 && event.y <= (yMax / 2) + 1)
+				{
+					current_mode = handle_click(current_mode);
+					draw_mode(win, current_mode);
+				}
+			}
+		}
+	}
+
+	delwin(win);
+	endwin();
+	return 0;
+}
+```
+
+![image-20240903162210087](/home/bhhh/snap/typora/90/.config/Typora/typora-user-images/image-20240903162210087.png)
