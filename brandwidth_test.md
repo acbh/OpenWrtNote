@@ -120,6 +120,16 @@ iperf Done.
   - 配置服务器地址
   - 连续发送数据包
 
+**通过命令行参数来选择协议和测试模式**
+
+`./server -p tcp -m up`：选择使用TCP进行上行测试。
+
+`./server -p udp -m down`：选择使用UDP进行下行测试。
+
+`./server -p tcp -m double`：选择使用TCP进行双向测试。
+
+如果没有指定协议参数，则默认使用TCP协议。
+
 
 
 
