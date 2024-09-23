@@ -8,6 +8,12 @@
 
 普通模式下`ggdG`
 
+**查看当前所有的tmux会话**
+`tmux list-sessions`
+
+**连接到特定的会话**
+`tmux attach -t 1`
+
 **查看文件夹总大小**
 
 `du -sh openwrt/`
